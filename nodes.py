@@ -7,7 +7,12 @@ from tqdm import trange
 from functools import partial
 import comfy.samplers
 import torch 
+import importlib
 
+
+x_flux_module = importlib.import_module("custom_nodes.x-flux-comfyui")
+# import sampling submodule from x-flux-comfyui
+get_schedule = x_flux_module.sampling.get_schedule
 
 
 # copied from comfy.k_diffusion.sampling to fix error when max_order is 1
@@ -33,6 +38,9 @@ def sample_deis(model, x, sigmas, extra_args=None, callback=None, disable=None, 
             callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised})
 
         d_cur = (x_cur - denoised) / t_cur
+        # print("Hacking dcur")
+        # d_cur = denoised
+        
 
         order = min(max_order, i+1)
         if t_next <= 0:
@@ -74,3 +82,25 @@ class SamplerDEIS:
         sampling_function = partial(sample_deis, max_order=order)
         sampler = KSAMPLER(sampling_function,)
         return (sampler, )
+
+class FlowMatchScheduler:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {
+                     "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
+                      }
+               }
+    RETURN_TYPES = ("SIGMAS",)
+    CATEGORY = "sampling/custom_sampling/schedulers"
+
+    FUNCTION = "get_sigmas"
+
+    def get_sigmas(self, steps,):
+        width = 1024
+        height = 1024
+        sigmas = get_schedule(steps, (width // 8) * (height // 8) // 4, shift=True,)
+        if not isinstance(sigmas, torch.Tensor):
+            sigmas = torch.tensor(sigmas)
+        print(f"Flowmatch sigmas: {sigmas}")
+        return (sigmas, )
