@@ -169,6 +169,8 @@ class FlowMatchScheduler:
         return {"required":
                     {
                      "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
+                     "width": ("INT", {"default": 1024, "min": 1, "max": 9999}),
+                     "height": ("INT", {"default": 1024, "min": 1, "max": 9999}),
                       }
                }
     RETURN_TYPES = ("SIGMAS",)
@@ -176,9 +178,7 @@ class FlowMatchScheduler:
 
     FUNCTION = "get_sigmas"
 
-    def get_sigmas(self, steps,):
-        width = 1024
-        height = 1024
+    def get_sigmas(self, steps, width, height):
         sigmas = get_schedule(steps, (width // 8) * (height // 8) // 4, shift=True,)
         if not isinstance(sigmas, torch.Tensor):
             sigmas = torch.tensor(sigmas)
